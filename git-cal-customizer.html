@@ -1,0 +1,82 @@
+<style type="text/css">
+  canvas {
+    cursor: crosshair;
+  }
+  section {
+    margin-bottom: 2em;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+  }
+
+  #palette label {
+    display: inline-block;
+    height: 40px;
+    width: 40px;
+    margin: 10px;
+    overflow: hidden;
+    border: 2px solid #808080;
+    cursor: pointer;
+    color: transparent;
+  }
+  #palette label:nth-of-type(1) {
+    background-color: #eee;
+  }
+  #palette label:nth-of-type(2) {
+    background-color: #d6e685;
+  }
+  #palette label:nth-of-type(3) {
+    background-color: #8cc665;
+  }
+  #palette label:nth-of-type(4) {
+    background-color: #44a340;
+  }
+  #palette label:nth-of-type(5) {
+    background-color: #1e6823;
+  }
+</style>
+
+<section>
+  <canvas id="cellCanvas"></canvas>
+  <div id="palette">
+    <label>
+      <input type="radio" name="brush" value="0"/>
+    </label>
+    <label>
+      <input type="radio" name="brush" value="1"/>
+    </label>
+    <label>
+      <input type="radio" name="brush" value="2"/>
+    </label>
+    <label>
+      <input type="radio" name="brush" value="3"/>
+    </label>
+    <label>
+      <input type="radio" name="brush" value="4"/>
+    </label>
+  </div>
+</section>
+
+<!-- Works with any image -->
+<section>
+  <input type="text" name="imageURL" value="/images/test.png" />
+  <img id="imageToBeUsed" src="">
+</section>
+
+<section>
+  <input type="text" name="imageName" value="my-gitfiti-image" />
+  <pre id="gitfiti"></pre>
+  <pre id="github-board"></pre>
+</section>
+
+
+<script src="git-cal-customizer.js"></script>
+
+<!--
+// TODO
+//     - Create a function to generate gradient/array between given colors
+// - Repeat-x option - NOT DONE FOR NOW, CAN REPEAT IMAGE BEFORE RUNNING
+// - Optimize the calculation functions
+// - Create a dat.GUI to make it easy
+// - Create demos (pattern, character, sin wave)
+-->
