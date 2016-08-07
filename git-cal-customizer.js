@@ -12,7 +12,7 @@ var imgCanvas = document.createElement('canvas'),
     icellSizeX,
     icellSizeY;
 
-var indexArray,
+var themeIndexes,
     reformattedArray;
 
 var gitfiti = document.getElementById('gitfiti'),
@@ -21,21 +21,34 @@ var gitfiti = document.getElementById('gitfiti'),
 // The input elements
 var urlInput = document.querySelector('[name=imageURL'),
     nameInput = document.querySelector('[name=imageName'),
+    indexInput = document.querySelector('[name=inputIndexes'),
     paletteChoices = document.querySelectorAll('#palette input');
-    
+
+// The theme to be used
 var themeColorsArray = ['#eee', '#d6e685', '#8cc665', '#44a340', '#1e6823'];
 themeColorsArray = parseColorArray(themeColorsArray);
 
+function parseColorArray(colorArray) {
+  var div = document.createElement('div'), m;
+  document.body.appendChild(div);
+  for(var i = 0; i < colorArray.length; i++) {
+    div.style.color = colorArray[i];
+    m = getComputedStyle(div).color.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+    if(m) colorArray[i] = { r: m[1], g: m[2], b: m[3] };
+    else throw new Error('Color ' + input + ' could not be parsed.');
+  }
+  document.body.removeChild(div);
+  
+  return colorArray;
+}
+
 
 // Add listeners for our palette options
-for(var i = 0; i < paletteChoices.length; i++) {
+for(var i = 0; i < paletteChoices.length; i++)
   paletteChoices[i].onclick = setColor;
-}
 
 var selectedColor = null;
-function setColor() {
-  selectedColor = this.value;
-}
+function setColor() { selectedColor = this.value; }
 
 // Listen for click events to change the color
 cellCanvas.onmousemove = cellCanvas.onclick = function(e) {
@@ -53,13 +66,26 @@ function changeCell(x, y) {
 
   if(typeof reformattedArray[xCell] != "undefined" 
      && typeof reformattedArray[xCell][yCell] != "undefined"
-     && typeof indexArray[index] != "undefined") 
+     && typeof themeIndexes[index] != "undefined") 
   {
-    indexArray[index] = selectedColor;
-    updateBoards(indexArray);
+    themeIndexes[index] = selectedColor;
+    updateBoards(themeIndexes);
   }
 }
 
+indexInput.onchange = function() {
+  var indexInput = parseIndexInput(this.value);
+  updateBoards(indexInput);
+}
+
+function parseIndexInput(indexString) {
+  // Break string into sections determined by new lines
+
+  // Go through each section, putting them into our format based on the length of the first line
+
+  // Catch malformed inputs and clear the input if so
+  return indexString.replace(/\D/g, '');
+}
 
 
 
@@ -75,21 +101,11 @@ img.onload = function() {
   // Size the grid based on the desired dimensions; get the dimensions
   // of the image get scale data; get averaged colors based on inputs.
   // Get the indexes, corresponding to a theme range, of the lightness
-  // using the method desired (round, floor, ceil)
-  indexArray = processImage(imgData, false, false);
-  // Get the colors based on ^^ and a given theme and update the output
-  updateBoards(indexArray);
-}
-
-
-
-
-
-function processImage(imgData, invertBool, roundBool) {
-  var averagedColors = gridifyAvgColors(imgData);
-  var lightnessObj = getLightnessObject(averagedColors);
-  var colorIntervals = createColorIntervals(lightnessObj.lightest, lightnessObj.darkest);
-  return getThemeIndexes(lightnessObj.array, colorIntervals, invertBool, roundBool);
+  // using the method desired (round, floor); get the theme color for
+  // that lightness value
+  themeIndexes = processImage(imgData, false, false);
+  // Update our text boards and the canvas
+  updateBoards(themeIndexes);
 }
 
 
@@ -127,16 +143,18 @@ function newImg(imgElem) {
   return data.data;
 }
 
-
-function gridifyAvgColors(imgDataArray) {
-	gridColors = [];
+// Return the indexes based on the color of the image and the theme to be used
+function processImage(imgDataArray, invertBool, roundBool) {
+	var lightVals = [],
+      lightestColor = 0,
+      darkestColor = 255;
   
   for(var i = 0; i < 53; i++) {
     for(var j = 0; j < numYCells; j++) {
       var ix,
           iy,
           color;
-      
+      // Get the average color of the section
       if(i >= offset 
          && (i < numXCells + offset && j < numYCells)) {
       	ix = (i - offset) * icellSizeX;
@@ -145,46 +163,30 @@ function gridifyAvgColors(imgDataArray) {
       } else {
       	color = { r: 255, g: 255, b: 255 };
       }
-      
-      gridColors.push(color);
+
+      // Get the lightness of the section
+      var lightVal = calculatePerceivedLuminance(color);
+      if(lightVal < darkestColor)
+        darkestColor = lightVal;
+      if(lightVal > lightestColor)
+        lightestColor = lightVal;
+
+      lightVals.push(lightVal);
     }
   }
-  
-  return gridColors;
-}
 
+  // Create our intervals based on the lightest and darkest section
+  var colorIntervals = createColorIntervals(lightestColor, darkestColor);
 
-function drawGrid(colorArray, fillColor) {
-  for(var i = 0; i < 53; i++) {
-    for(var j = 0; j < numYCells; j++) {
-      var x = i * cellSize,
-          y = j * cellSize,
-          color;
-      
-      var colorCheck = colorArray[i * numYCells + j];
-      if(colorCheck.r !== '238'
-         || colorCheck.g !== '238'
-         || colorCheck.b != '238') {
-      	color = colorArray[i * numYCells + j];
-      } else {
-      	if(fillColor)
-        	color = parseColorArray([fillColor])[0];
-        else
-      		color = { r: 238, g: 238, b: 238 };
-      }
-      
-      cellContext.fillStyle = 'rgb(' + color.r + ', ' + color.g + ', ' + color.b + ')';
-      cellContext.fillRect(x + i * gutter, y + j * gutter, cellSize, cellSize);
-    }
-  }
+  // Return the indexes based on the color of the image and the theme to be used
+  return getThemeIndexes(lightVals, colorIntervals, invertBool, roundBool);
 }
 
 
 // Gets the average color of the requested area
 function getAvgColorAsRGB(imgDataArray, startX, startY) {
-	var rgb = { r: 0, g: 0, b: 0 };
-  
-  var count = 0;
+	var rgb = { r: 0, g: 0, b: 0 },
+      count = 0;
       
   for(var j = startY; j < startY + icellSizeY; j += pixelInterval) {
   	for(var i = startX; i < startX + icellSizeX; i += pixelInterval) { // Do this second for lookup perf reasons
@@ -204,27 +206,11 @@ function getAvgColorAsRGB(imgDataArray, startX, startY) {
   return rgb;
 }
 
-function getLightnessObject(colorsArray) {
-	var lightnessArray = [],
-      lightestColor = 0,
-      darkestColor = 255;
-
-  for(var i = 0; i < colorsArray.length; i++) {
-  	var lightVal = calculatePerceivedLuminance(colorsArray[i]);
-    if(lightVal < darkestColor)
-    	darkestColor = lightVal;
-    if(lightVal > lightestColor)
-    	lightestColor = lightVal;
-  	lightnessArray.push(lightVal);
-  }
-  return { array: lightnessArray, lightest: lightestColor, darkest: darkestColor };
-}
-
 function calculatePerceivedLuminance(color) {
   return color.r * 0.299 + color.g * 0.587 + color.b * 0.114;
 }
 
-// Light value should be greater than or equal to the dark value
+// Light value should be greater than or equal to the dark value in rgb
 function createColorIntervals(lightVal, darkVal) {
   var intervalSize = (lightVal - darkVal) / 4;
   return [
@@ -236,8 +222,9 @@ function createColorIntervals(lightVal, darkVal) {
   ];
 }
 
+// Based on a lightness array and an array for theme color intervals, get the theme index
 function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundBool) {
-  var indexArray = lightnessArray.slice();
+  var indexArray = [];
 	for(var i = 0; i < lightnessArray.length; i++) {
     for(var j = 0, l = colorIntervalsArray.length; j < l; j++) {
       /* Round */
@@ -252,20 +239,16 @@ function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundB
 
         if(invertBool) 
         {
-          if(distToBot > distToTop) {
-            indexArray[i] = l - j - 2;
-          } 
-          else {
-            indexArray[i] = l - j - 1;
-          }
+          if(distToBot > distToTop)
+            indexArray.push(l - j - 2);
+          else
+            indexArray.push(l - j - 1);
         } 
         else {
-          if(distToBot > distToTop) {
-            indexArray[i] = j;
-          } 
-          else {
-            indexArray[i] = j + 1;
-          }
+          if(distToBot > distToTop)
+            indexArray.push(j);
+          else
+            indexArray.push(j + 1);
         }
           
         break;
@@ -277,19 +260,19 @@ function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundB
            && i < (offset + numXCells) * numYCells 
            && i >= offset * numYCells) 
         {
-          indexArray[i] = l - j - 1;
+          indexArray.push(l - j - 1);
         }
         else
-          indexArray[i] = j;
+          indexArray.push(j);
 
         break;
       }/**/
     }
   }
-
   return indexArray;
 }
 
+// Convert the theme indexed array to actual colors
 function themifyIndexArray(indexArray, themeArray) {
   var themeColorArray = indexArray.slice();
 
@@ -299,22 +282,7 @@ function themifyIndexArray(indexArray, themeArray) {
   return themeColorArray;
 }
 
-
-
-function parseColorArray(colorArray) {
-  var div = document.createElement('div'), m;
-  document.body.appendChild(div);
-  for(var i = 0; i < colorArray.length; i++) {
-  	div.style.color = colorArray[i];
-    m = getComputedStyle(div).color.match(/^rgb\s*\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
-    if(m) colorArray[i] = { r: m[1], g: m[2], b: m[3] };
-    else throw new Error('Color ' + input + ' could not be parsed.');
-  }
-  document.body.removeChild(div);
-  
-  return colorArray;
-}
-
+// Allow the whole array to be shifted over by shiftAmnt
 function shiftArr(colorIndexArray, shiftAmnt) {
 	var shiftedArray = new Array(colorIndexArray.length).fill(0);
 	for(var i = 0; i < colorIndexArray.length; i++) {
@@ -350,7 +318,7 @@ function createGitfitiFormat(indexArray, name) {
     output += indexArray[i].join(',');
 
     if(i != 6)
-      output += ']\n';
+      output += '],\n';
     else
       output += ']';
   }
@@ -368,7 +336,7 @@ function createGithubBoardFormat(indexArray, name) {
 }
 
 
-
+// Update the canvas and text outputs
 function updateBoards(indexArray) {
   // Update the canvas
   var themeIndexArray = themifyIndexArray(indexArray, themeColorsArray);
@@ -379,4 +347,30 @@ function updateBoards(indexArray) {
 
   gitfiti.innerText = createGitfitiFormat(reformattedArray, nameInput.value);
   githubBoard.innerText = createGithubBoardFormat(reformattedArray);
+}
+
+
+function drawGrid(colorArray, fillColor) {
+  for(var i = 0; i < 53; i++) {
+    for(var j = 0; j < numYCells; j++) {
+      var x = i * cellSize,
+          y = j * cellSize,
+          color;
+      
+      var colorCheck = colorArray[i * numYCells + j];
+      if(colorCheck.r !== '238'
+         || colorCheck.g !== '238'
+         || colorCheck.b != '238') {
+        color = colorArray[i * numYCells + j];
+      } else {
+        if(fillColor)
+          color = parseColorArray([fillColor])[0];
+        else
+          color = { r: 238, g: 238, b: 238 };
+      }
+      
+      cellContext.fillStyle = 'rgb(' + color.r + ', ' + color.g + ', ' + color.b + ')';
+      cellContext.fillRect(x + i * gutter, y + j * gutter, cellSize, cellSize);
+    }
+  }
 }

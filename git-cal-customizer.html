@@ -59,7 +59,7 @@
 
 <!-- Works with any image -->
 <section>
-  <input type="text" name="imageURL" value="/images/test.png" />
+  <input type="text" name="imageURL" value="/images/pokeball.png" />
   <img id="imageToBeUsed" src="">
 </section>
 
@@ -69,14 +69,32 @@
   <pre id="github-board"></pre>
 </section>
 
+<section>
+  <input type="text" name="inputIndexes" placeholder="Input a previously made index array here in either gitfiti or github-board format">
+</section>
+
 
 <script src="git-cal-customizer.js"></script>
 
 <!--
 // TODO
-//     - Create a function to generate gradient/array between given colors
 // - Repeat-x option - NOT DONE FOR NOW, CAN REPEAT IMAGE BEFORE RUNNING
+// - UNDO
+// - Trim off extra
+// - Create demos
+// - Create boxes from inputted gitfiti or githubboard formats
+
 // - Optimize the calculation functions
 // - Create a dat.GUI to make it easy
-// - Create demos (pattern, character, sin wave)
+// - Create a function to generate gradient/array between given colors
+
+
+Meant to be a BASE
+
+IMAGE GUIDELINES:
+- High light contrast
+  - Try replacing darker colors with lighter ones or lighter ones with darker ones
+- Simple shapes (only 7 pixels of detail)
+- Desired object fills up the image (no extra spacing around edges)
+- Try to get the proportions correct (given the height is 7, fit parts of images to that ratio)
 -->
