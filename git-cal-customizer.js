@@ -78,13 +78,44 @@ indexInput.onchange = function() {
   updateBoards(indexInput);
 }
 
+// Parses inputted index arrays (valid index range is 0-9)
 function parseIndexInput(indexString) {
   // Break string into sections determined by new lines
+  var indexRows = indexString.split('\n');
 
   // Go through each section, putting them into our format based on the length of the first line
+  var columnNum;
+  for(var i = 0; i < indexRows.length; i++) {
+    
+    // Keep only the numbers
+    indexRows[i] = indexRows[i].replace(/\D/g, '');
 
-  // Catch malformed inputs and clear the input if so
-  return indexString.replace(/\D/g, '');
+    // Remove empty rows
+    if(indexRows[i].length === 0) {
+      indexRows.splice(i, 1);
+      i--;
+    }
+
+    // Handle the first row specially
+    else if(i === 0) {
+      columnNum = indexRows[i].length;
+    }
+
+    // Catch errors based on the length of the input
+    else if(indexRows[i].length != columnNum) 
+      invalidIndexInput();
+  }
+
+  // Remove the image because it's not being used
+  urlInput.value = '';
+  img.src = '';
+
+  return reformatInput(indexRows);
+}
+
+function invalidIndexInput() {
+  alert("Invalid input! Please make sure your input is in gitfiti or github-board format.");
+  indexInput.value = '';
 }
 
 
@@ -297,7 +328,7 @@ function shiftArr(colorIndexArray, shiftAmnt) {
 
 
 // Since both formats go ltr then ttb and we go ttb then ltr, have to convert
-function reformatArray(indexArray) {
+function reformatOutput(indexArray) {
   var reformattedArray = [[],[],[],[],[],[],[]];
   for(var i = 0; i < indexArray.length; i++) {
     var index = i % 7;
@@ -306,6 +337,22 @@ function reformatArray(indexArray) {
 
   return reformattedArray;
 }
+
+// Switch from their formats to our format
+function reformatInput(indexArray) {
+  var reformattedArray = [];
+
+  // for each index
+  for(var i = 0; i < indexArray[0].length; i++) {
+    // for each row
+    for(var j = 0; j < indexArray.length; j++) {
+      reformattedArray.push(parseInt(indexArray[j][i]));
+    }
+  }
+
+  return reformattedArray;
+}
+
 
 function createGitfitiFormat(indexArray, name) {
   var output = ':' + name + '\n[';
@@ -343,7 +390,7 @@ function updateBoards(indexArray) {
   drawGrid(themeIndexArray);
 
   // CHANGE so it only does this on image change, updates individual values otherwise
-  reformattedArray = reformatArray(indexArray);
+  reformattedArray = reformatOutput(indexArray);
 
   gitfiti.innerText = createGitfitiFormat(reformattedArray, nameInput.value);
   githubBoard.innerText = createGithubBoardFormat(reformattedArray);
@@ -351,7 +398,7 @@ function updateBoards(indexArray) {
 
 
 function drawGrid(colorArray, fillColor) {
-  for(var i = 0; i < 53; i++) {
+  for(var i = 0; i < colorArray.length / 7; i++) {
     for(var j = 0; j < numYCells; j++) {
       var x = i * cellSize,
           y = j * cellSize,

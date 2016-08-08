@@ -34,6 +34,11 @@
   #palette label:nth-of-type(5) {
     background-color: #1e6823;
   }
+
+  [name="inputIndexes"] {
+    width: 100%;
+    min-height: 150px;
+  }
 </style>
 
 <section>
@@ -59,18 +64,18 @@
 
 <!-- Works with any image -->
 <section>
-  <input type="text" name="imageURL" value="/images/pokeball.png" />
+  <input type="text" name="imageURL" value="/images/1alien.jpg" placeholder="Enter an image URL" />
   <img id="imageToBeUsed" src="">
 </section>
 
 <section>
-  <input type="text" name="imageName" value="my-gitfiti-image" />
+  <input type="text" name="imageName" value="my-gitfiti-image" placeholder="Enter a name for gitfiti to use" />
   <pre id="gitfiti"></pre>
   <pre id="github-board"></pre>
 </section>
 
 <section>
-  <input type="text" name="inputIndexes" placeholder="Input a previously made index array here in either gitfiti or github-board format">
+  <textarea type="text" name="inputIndexes" placeholder="Input a previously made index array here in either gitfiti or github-board format"></textarea>
 </section>
 
 
@@ -82,7 +87,6 @@
 // - UNDO
 // - Trim off extra
 // - Create demos
-// - Create boxes from inputted gitfiti or githubboard formats
 
 // - Optimize the calculation functions
 // - Create a dat.GUI to make it easy
@@ -96,5 +100,6 @@ IMAGE GUIDELINES:
   - Try replacing darker colors with lighter ones or lighter ones with darker ones
 - Simple shapes (only 7 pixels of detail)
 - Desired object fills up the image (no extra spacing around edges)
+- Filled objects work much better than ones with just outlines
 - Try to get the proportions correct (given the height is 7, fit parts of images to that ratio)
 -->
