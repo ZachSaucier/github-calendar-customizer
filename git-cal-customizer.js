@@ -14,6 +14,10 @@ var imgCanvas = document.createElement('canvas'),
 
 var themeIndexes,
     reformattedArray;
+    
+// Keep track of undos and redos
+var undoStack = [],
+    redoStack = [];
 
 var gitfiti = document.getElementById('gitfiti'),
     githubBoard = document.getElementById('github-board');
@@ -22,7 +26,9 @@ var gitfiti = document.getElementById('gitfiti'),
 var urlInput = document.querySelector('[name=imageURL'),
     nameInput = document.querySelector('[name=imageName'),
     indexInput = document.querySelector('[name=inputIndexes'),
-    paletteChoices = document.querySelectorAll('#palette input');
+    paletteChoices = document.querySelectorAll('#palette input'),
+    undoBtn = document.getElementById("undo"),
+    redoBtn = document.getElementById("redo");
 
 // The theme to be used
 var themeColorsArray = ['#eee', '#d6e685', '#8cc665', '#44a340', '#1e6823'];
@@ -52,7 +58,7 @@ function setColor() { selectedColor = this.value; }
 
 // Listen for click events to change the color
 cellCanvas.onmousemove = cellCanvas.onclick = function(e) {
-  if(selectedColor != null 
+  if(selectedColor != null
      && e.which == 1) // Left click
   {
     changeCell(e.pageX - this.offsetLeft, e.pageY - this.offsetTop);
@@ -63,10 +69,15 @@ function changeCell(x, y) {
   var xCell = Math.floor(y / (cellSize + gutter)),
       yCell = Math.floor(x / (cellSize + gutter)),
       index = xCell + yCell * 7;
+  
+  // Save it to our undo stack before we change it
+  undoStack.push({index: index, oldColor: themeIndexes[index], newColor: selectedColor});
+  // Clear out the redo stack
+  redoStack = [];
 
-  if(typeof reformattedArray[xCell] != "undefined" 
+  if(typeof reformattedArray[xCell] != "undefined"
      && typeof reformattedArray[xCell][yCell] != "undefined"
-     && typeof themeIndexes[index] != "undefined") 
+     && typeof themeIndexes[index] != "undefined")
   {
     themeIndexes[index] = selectedColor;
     updateBoards(themeIndexes);
@@ -102,13 +113,15 @@ function parseIndexInput(indexString) {
     }
 
     // Catch errors based on the length of the input
-    else if(indexRows[i].length != columnNum) 
+    else if(indexRows[i].length != columnNum)
       invalidIndexInput();
   }
 
   // Remove the image because it's not being used
   urlInput.value = '';
   img.src = '';
+  
+  undoStack.push(indexRows);
 
   return reformatInput(indexRows);
 }
@@ -118,6 +131,22 @@ function invalidIndexInput() {
   indexInput.value = '';
 }
 
+// Add our undo and redo listeners, including the keyboard
+undoBtn.onclick = undo;
+redoBtn.onclick = redo;
+document.onkeydown = checkKeys;
+
+function checkKeys(e) {
+  if(e.ctrlKey) {
+    // Catch CTRL + Z
+    if(e.keyCode === 90)
+      undo();
+    
+    // Catch CTRL + Y
+    if(e.keyCode === 89)
+      redo();
+  }
+}
 
 
 
@@ -128,6 +157,9 @@ img.src = urlInput.value;
 img.onload = function() {
   // Once the CORS enabled image loads, get the image data
   var imgData = newImg(img);
+  
+  // Add the current values to our undo stack before we update it
+  undoStack.push(themeIndexes);
 
   // Size the grid based on the desired dimensions; get the dimensions
   // of the image get scale data; get averaged colors based on inputs.
@@ -136,7 +168,7 @@ img.onload = function() {
   // that lightness value
   themeIndexes = processImage(imgData, false, false);
   // Update our text boards and the canvas
-  updateBoards(themeIndexes);
+  updateBoards(themeIndexes, true);
 }
 
 
@@ -186,7 +218,7 @@ function processImage(imgDataArray, invertBool, roundBool) {
           iy,
           color;
       // Get the average color of the section
-      if(i >= offset 
+      if(i >= offset
          && (i < numXCells + offset && j < numYCells)) {
       	ix = (i - offset) * icellSizeX;
         iy = j * icellSizeY;
@@ -211,6 +243,50 @@ function processImage(imgDataArray, invertBool, roundBool) {
 
   // Return the indexes based on the color of the image and the theme to be used
   return getThemeIndexes(lightVals, colorIntervals, invertBool, roundBool);
+}
+
+
+function undo() {
+  if(undoStack.length > 0) {
+    var data = undoStack.pop();
+    
+    if(typeof data != "undefined") {
+      if(data.hasOwnProperty("index")) { // If it's a single cell
+        themeIndexes[data.index] = data.oldColor;
+      }
+      else if(data.isArray()) { // If it's a complete array, reformat
+        themeIndexes = data;
+      }
+      
+      updateBoards(themeIndexes);
+    }
+    
+    redoStack.push(data);
+  }
+  else { // Nothing to undo
+    console.log("Nothing to undo");
+  }
+}
+
+function redo() {
+  if(redoStack.length > 0) {
+    var data = redoStack.pop();
+    
+    if(typeof data != "undefined") {
+      if(data.hasOwnProperty("index")) { // If it's a single cell
+        themeIndexes[data.index] = data.newColor;
+      }
+      else if(data.isArray()) { // If it's a complete array, reformat
+        themeIndexes = data;
+      }
+      
+      updateBoards(themeIndexes);
+    }
+    
+    undoStack.push(data);
+  } else {
+    console.log("Nothing to redo");
+  }
 }
 
 
@@ -261,20 +337,20 @@ function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundB
       /* Round */
       if(roundBool
          && lightnessArray[i] >= Math.floor(colorIntervalsArray[j])
-         && i < (offset + numXCells) * numYCells 
+         && i < (offset + numXCells) * numYCells
          && i >= offset * numYCells
          && colorIntervalsArray[j + 1]) {
         
         var distToBot = Math.abs(lightnessArray[i] - colorIntervalsArray[j]),
             distToTop = Math.abs(colorIntervalsArray[j + 1] - lightnessArray[i]);
 
-        if(invertBool) 
+        if(invertBool)
         {
           if(distToBot > distToTop)
             indexArray.push(l - j - 2);
           else
             indexArray.push(l - j - 1);
-        } 
+        }
         else {
           if(distToBot > distToTop)
             indexArray.push(j);
@@ -287,9 +363,9 @@ function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundB
     
       /* Floor */
       if(lightnessArray[i] >= Math.floor(colorIntervalsArray[j])) {
-        if(invertBool 
-           && i < (offset + numXCells) * numYCells 
-           && i >= offset * numYCells) 
+        if(invertBool
+           && i < (offset + numXCells) * numYCells
+           && i >= offset * numYCells)
         {
           indexArray.push(l - j - 1);
         }
@@ -382,14 +458,22 @@ function createGithubBoardFormat(indexArray, name) {
   return output;
 }
 
+function cutZeros(indexArray) {
+  return indexArray.slice(0, numXCells * numYCells);
+}
+
 
 // Update the canvas and text outputs
-function updateBoards(indexArray) {
+function updateBoards(indexArray, cutZerosBool) {
   // Update the canvas
   var themeIndexArray = themifyIndexArray(indexArray, themeColorsArray);
   drawGrid(themeIndexArray);
+  
+  // Cut off the extra zeros if we need to
+  if(cutZerosBool)
+    indexArray = cutZeros(indexArray);
 
-  // CHANGE so it only does this on image change, updates individual values otherwise
+  // Format our data into a form that can be converted to gitfiti and github-board format
   reformattedArray = reformatOutput(indexArray);
 
   gitfiti.innerText = createGitfitiFormat(reformattedArray, nameInput.value);

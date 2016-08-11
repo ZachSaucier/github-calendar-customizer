@@ -60,11 +60,13 @@
       <input type="radio" name="brush" value="4"/>
     </label>
   </div>
+  <button id="undo" title="undo your last action (you can also use CTRL + Z)">Undo</button>
+  <button id="redo" title="redo the action you last undid (you can also use CTRL + Y)">Redo</button>
 </section>
 
 <!-- Works with any image -->
 <section>
-  <input type="text" name="imageURL" value="/images/1alien.jpg" placeholder="Enter an image URL" />
+  <input type="text" name="imageURL" value="/images/rect.png" placeholder="Enter an image URL" />
   <img id="imageToBeUsed" src="">
 </section>
 
@@ -84,8 +86,7 @@
 <!--
 // TODO
 // - Repeat-x option - NOT DONE FOR NOW, CAN REPEAT IMAGE BEFORE RUNNING
-// - UNDO
-// - Trim off extra
+// - Clean up UI
 // - Create demos
 
 // - Optimize the calculation functions
