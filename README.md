@@ -51,6 +51,8 @@ The image loader functionality is meant to be a ***base*** and likely needs edit
 
 ## Examples
 
+[View shared templates or share your own!](https://github.com/ZachSaucier/github-calendar-customizer/issues/1)!
+
 Pokeball
 
 ![](http://i.imgur.com/96Ah7dw.png)
