@@ -1,106 +1,98 @@
-<style type="text/css">
-  canvas {
-    cursor: crosshair;
-  }
-  section {
-    margin-bottom: 2em;
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
-  }
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN"
+"http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>GitHub calendar customizer</title>
 
-  #palette label {
-    display: inline-block;
-    height: 40px;
-    width: 40px;
-    margin: 10px;
-    overflow: hidden;
-    border: 2px solid #808080;
-    cursor: pointer;
-    color: transparent;
-  }
-  #palette label:nth-of-type(1) {
-    background-color: #eee;
-  }
-  #palette label:nth-of-type(2) {
-    background-color: #d6e685;
-  }
-  #palette label:nth-of-type(3) {
-    background-color: #8cc665;
-  }
-  #palette label:nth-of-type(4) {
-    background-color: #44a340;
-  }
-  #palette label:nth-of-type(5) {
-    background-color: #1e6823;
-  }
 
-  [name="inputIndexes"] {
-    width: 100%;
-    min-height: 150px;
-  }
-</style>
+  <link rel="stylesheet" type="text/css" href="git-cal-customizer.css">
+</head>
+<body>
 
-<section>
-  <canvas id="cellCanvas"></canvas>
-  <div id="palette">
+  <section class="title-section">
+    <h1>GitHub contribution calendar customizer</h1>
+    <h3>See this project <a href="https://github.com/ZachSaucier/github-calendar-customizer">on GitHub</a></h3>
+  </section>
+
+  <section>
+    <canvas id="cellCanvas"></canvas>
+
+    <button id="invertColors" title="switch the darkest colors for the lightest and the lightest for the darkest">Invert colors</button>
+
+    <div id="palette">
+      <label>
+        <input type="radio" name="brush" value="0"/>
+      </label>
+      <label>
+        <input type="radio" name="brush" value="1"/>
+      </label>
+      <label>
+        <input type="radio" name="brush" value="2"/>
+      </label>
+      <label>
+        <input type="radio" name="brush" value="3"/>
+      </label>
+      <label>
+        <input type="radio" name="brush" value="4"/>
+      </label>
+    </div>
+    <button id="undo" title="undo your last action (you can also use CTRL + Z)">Undo</button>
+    <button id="redo" title="redo the action you last undid (you can also use CTRL + Y)">Redo</button>
+
+    <p>You must select a color before clicking to change cell colors.</p>
+  </section>
+
+  <!-- Works with any image -->
+  <section class="input-section">
+    <h3>Input settings</h3>
+
+    <p><b>NOTE:</b> Entering a new image URL, index array, or changing the rounding check box will reset the current grid.</p>
+
     <label>
-      <input type="radio" name="brush" value="0"/>
+      Round image values:
+      <input type="checkbox" name="roundColors" title="uses rounding instead of flooring of values">
+      (generally takes away some variance)
     </label>
+
     <label>
-      <input type="radio" name="brush" value="1"/>
+      Image URL: 
+      <input type="text" name="imageURL" value="/images/1.jpg" placeholder="Enter an image URL" />
     </label>
+    
+    <img id="imageToBeUsed" src="">
+
+
     <label>
-      <input type="radio" name="brush" value="2"/>
+      Pre-made index array:
+      <textarea type="text" name="inputIndexes" placeholder="Input a previously made index array here in either gitfiti or github-board format"></textarea>
     </label>
+  </section>
+
+  <section class="output-section">
+    <h3>Output settings</h3>
+
     <label>
-      <input type="radio" name="brush" value="3"/>
+      Cut off extra 0s:
+      <input type="checkbox" name="cutZeros" checked title="removes extra 0s from the outputted array">
     </label>
+
     <label>
-      <input type="radio" name="brush" value="4"/>
+      Gitfiti name:
+      <input type="text" name="imageName" value="my-gitfiti-image" placeholder="Enter a name for gitfiti to use" />
     </label>
-  </div>
-  <button id="undo" title="undo your last action (you can also use CTRL + Z)">Undo</button>
-  <button id="redo" title="redo the action you last undid (you can also use CTRL + Y)">Redo</button>
-</section>
+    
+    <pre id="gitfiti"></pre>
+    <pre id="github-board"></pre>
+  </section>
 
-<!-- Works with any image -->
-<section>
-  <input type="text" name="imageURL" value="/images/rect.png" placeholder="Enter an image URL" />
-  <img id="imageToBeUsed" src="">
-</section>
-
-<section>
-  <input type="text" name="imageName" value="my-gitfiti-image" placeholder="Enter a name for gitfiti to use" />
-  <pre id="gitfiti"></pre>
-  <pre id="github-board"></pre>
-</section>
-
-<section>
-  <textarea type="text" name="inputIndexes" placeholder="Input a previously made index array here in either gitfiti or github-board format"></textarea>
-</section>
+  <section>
+    <p>Created with &#9829; by <a href="http://zachsaucier.com/">Zach Saucier</a>. For more, follow <a href="https://twitter.com/ZachSaucier">his Twitter</a>.</p>
+  </section>
 
 
-<script src="git-cal-customizer.js"></script>
-
-<!--
-// TODO
-// - Repeat-x option - NOT DONE FOR NOW, CAN REPEAT IMAGE BEFORE RUNNING
-// - Clean up UI
-// - Create demos
-
-// - Optimize the calculation functions
-// - Create a dat.GUI to make it easy
-// - Create a function to generate gradient/array between given colors
-
-
-Meant to be a BASE
-
-IMAGE GUIDELINES:
-- High light contrast
-  - Try replacing darker colors with lighter ones or lighter ones with darker ones
-- Simple shapes (only 7 pixels of detail)
-- Desired object fills up the image (no extra spacing around edges)
-- Filled objects work much better than ones with just outlines
-- Try to get the proportions correct (given the height is 7, fit parts of images to that ratio)
--->
+  <script src="git-cal-customizer.js"></script>
+</body>
+</html>

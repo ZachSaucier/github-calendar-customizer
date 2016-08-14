@@ -9,8 +9,13 @@ var imgCanvas = document.createElement('canvas'),
     offset = 0,
     numXCells, // The width of our scaled image in cell size
     numYCells = 7, // The height of our scaled image in cell size
+    cutZerosBool = true,
     icellSizeX,
     icellSizeY;
+
+// Keep track of whether or not the mouse click is down
+// Can't use event.which because browsers are dumb
+var mouseIsDown = false;
 
 var themeIndexes,
     reformattedArray;
@@ -24,11 +29,14 @@ var gitfiti = document.getElementById('gitfiti'),
 
 // The input elements
 var urlInput = document.querySelector('[name=imageURL'),
+    cutZerosBtn = document.querySelector('[name=cutZeros'),
     nameInput = document.querySelector('[name=imageName'),
     indexInput = document.querySelector('[name=inputIndexes'),
+    invertBtn = document.getElementById('invertColors'),
+    roundInput = document.querySelector('[name=roundColors'),
     paletteChoices = document.querySelectorAll('#palette input'),
-    undoBtn = document.getElementById("undo"),
-    redoBtn = document.getElementById("redo");
+    undoBtn = document.getElementById('undo'),
+    redoBtn = document.getElementById('redo');
 
 // The theme to be used
 var themeColorsArray = ['#eee', '#d6e685', '#8cc665', '#44a340', '#1e6823'];
@@ -57,12 +65,25 @@ var selectedColor = null;
 function setColor() { selectedColor = this.value; }
 
 // Listen for click events to change the color
-cellCanvas.onmousemove = cellCanvas.onclick = function(e) {
+cellCanvas.onmousemove = function(e) {
   if(selectedColor != null
-     && e.which == 1) // Left click
+     && mouseIsDown) // Left click
   {
     changeCell(e.pageX - this.offsetLeft, e.pageY - this.offsetTop);
   }
+}
+cellCanvas.onclick = function(e) {
+  if(selectedColor != null) {
+    changeCell(e.pageX - this.offsetLeft, e.pageY - this.offsetTop);
+  }
+}
+
+// Listen for clicks
+document.onmousedown = function() {
+  mouseIsDown = true;
+}
+document.onmouseup = function() {
+  mouseIsDown = false;
 }
 
 function changeCell(x, y) {
@@ -71,7 +92,12 @@ function changeCell(x, y) {
       index = xCell + yCell * 7;
   
   // Save it to our undo stack before we change it
-  undoStack.push({index: index, oldColor: themeIndexes[index], newColor: selectedColor});
+  var lastAdded = undoStack[undoStack.length - 1],
+      oldColor = themeIndexes[index];
+  if(typeof lastAdded.data === "undefined"
+     || index != lastAdded.data.index 
+     || oldColor != selectedColor) // Don't add the same one twice
+    addAction({index: index, oldColor: oldColor, newColor: selectedColor});
   // Clear out the redo stack
   redoStack = [];
 
@@ -84,9 +110,45 @@ function changeCell(x, y) {
   }
 }
 
+
+// Detect invert checkbox changes
+invertBtn.onclick = function() {
+  addAction(themeIndexes, 'invertVals');
+
+  themeIndexes = invert(themeIndexes, themeColorsArray.length - 1);
+  updateBoards(themeIndexes);
+}
+
+// Detect round checkbox changes
+roundInput.onchange = function() {
+  addAction(themeIndexes, 'roundVals');
+  loadImage();
+}
+
+// Detect image URL changes
+urlInput.onchange = function() {
+  addAction(themeIndexes, 'newImage');
+  img.src = urlInput.value;
+  // The following line must be commented out to work on local versions because of CORS
+  //img.src = 'https://crossorigin.me/' + urlInput.value;
+}
+
+// Detect whether or not to cut off the zeros
+cutZerosBtn.onchange = function() {
+  cutZerosBool = this.checked ? true : false;
+  updateBoards(themeIndexes);
+}
+
+// Detect name changes
+nameInput.onkeyup = nameInput.onchange = function() {
+  updateBoards(themeIndexes);
+}
+
+// Detect inputted index arrays
 indexInput.onchange = function() {
-  var indexInput = parseIndexInput(this.value);
-  updateBoards(indexInput);
+  addAction(themeIndexes, 'newIndexArray');
+  themeIndexes = parseIndexInput(this.value);
+  updateBoards(themeIndexes);
 }
 
 // Parses inputted index arrays (valid index range is 0-9)
@@ -120,8 +182,6 @@ function parseIndexInput(indexString) {
   // Remove the image because it's not being used
   urlInput.value = '';
   img.src = '';
-  
-  undoStack.push(indexRows);
 
   return reformatInput(indexRows);
 }
@@ -153,22 +213,29 @@ function checkKeys(e) {
 // Use a CORS proxy to allow the image to be used
 img.crossOrigin = 'Anonymous';
 img.src = urlInput.value;
+// The following line must be commented out to work on local versions because of CORS
 //img.src = 'https://crossorigin.me/' + urlInput.value;
 img.onload = function() {
+  // Add the current values to our undo stack before we update it
+  addAction(themeIndexes, 'newImage');
+
+  loadImage();
+}
+function loadImage() {
+  redoStack = [];
+
   // Once the CORS enabled image loads, get the image data
   var imgData = newImg(img);
-  
-  // Add the current values to our undo stack before we update it
-  undoStack.push(themeIndexes);
 
   // Size the grid based on the desired dimensions; get the dimensions
   // of the image get scale data; get averaged colors based on inputs.
   // Get the indexes, corresponding to a theme range, of the lightness
   // using the method desired (round, floor); get the theme color for
   // that lightness value
-  themeIndexes = processImage(imgData, false, false);
+  themeIndexes = processImage(imgData, roundInput.checked);
+
   // Update our text boards and the canvas
-  updateBoards(themeIndexes, true);
+  updateBoards(themeIndexes);
 }
 
 
@@ -207,7 +274,7 @@ function newImg(imgElem) {
 }
 
 // Return the indexes based on the color of the image and the theme to be used
-function processImage(imgDataArray, invertBool, roundBool) {
+function processImage(imgDataArray, roundBool) {
 	var lightVals = [],
       lightestColor = 0,
       darkestColor = 255;
@@ -242,26 +309,45 @@ function processImage(imgDataArray, invertBool, roundBool) {
   var colorIntervals = createColorIntervals(lightestColor, darkestColor);
 
   // Return the indexes based on the color of the image and the theme to be used
-  return getThemeIndexes(lightVals, colorIntervals, invertBool, roundBool);
+  return getThemeIndexes(lightVals, colorIntervals, roundBool);
 }
 
 
+function addAction(data, type) {
+  type = type || 'cellChange';
+
+  undoStack.push({ data: data, type: type });
+}
+
+function changeState(type) {
+  switch (type) {
+    case 'roundVals':
+      roundInput.checked = !roundInput.checked;
+      break;
+    case 'newIndexArray':
+      indexInput.value = '';
+      break;
+  }
+}
+
 function undo() {
   if(undoStack.length > 0) {
-    var data = undoStack.pop();
+    var actionObj = undoStack.pop(),
+        data = actionObj.data;
     
     if(typeof data != "undefined") {
       if(data.hasOwnProperty("index")) { // If it's a single cell
+        redoStack.push(actionObj);
         themeIndexes[data.index] = data.oldColor;
       }
-      else if(data.isArray()) { // If it's a complete array, reformat
+      else if(Array.isArray(data)) { // If it's a complete array, reformat
+        redoStack.push({ data: themeIndexes, type: actionObj.type });
         themeIndexes = data;
       }
       
+      changeState(actionObj.type);
       updateBoards(themeIndexes);
     }
-    
-    redoStack.push(data);
   }
   else { // Nothing to undo
     console.log("Nothing to undo");
@@ -270,20 +356,22 @@ function undo() {
 
 function redo() {
   if(redoStack.length > 0) {
-    var data = redoStack.pop();
+    var actionObj = redoStack.pop(),
+        data = actionObj.data;
     
     if(typeof data != "undefined") {
       if(data.hasOwnProperty("index")) { // If it's a single cell
+        undoStack.push(actionObj);
         themeIndexes[data.index] = data.newColor;
       }
-      else if(data.isArray()) { // If it's a complete array, reformat
+      else if(Array.isArray(data)) { // If it's a complete array, reformat
+        undoStack.push({ data: themeIndexes, type: actionObj.type });
         themeIndexes = data;
       }
       
+      changeState(actionObj.type);
       updateBoards(themeIndexes);
     }
-    
-    undoStack.push(data);
   } else {
     console.log("Nothing to redo");
   }
@@ -330,7 +418,7 @@ function createColorIntervals(lightVal, darkVal) {
 }
 
 // Based on a lightness array and an array for theme color intervals, get the theme index
-function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundBool) {
+function getThemeIndexes(lightnessArray, colorIntervalsArray, roundBool) {
   var indexArray = [];
 	for(var i = 0; i < lightnessArray.length; i++) {
     for(var j = 0, l = colorIntervalsArray.length; j < l; j++) {
@@ -344,33 +432,17 @@ function getThemeIndexes(lightnessArray, colorIntervalsArray, invertBool, roundB
         var distToBot = Math.abs(lightnessArray[i] - colorIntervalsArray[j]),
             distToTop = Math.abs(colorIntervalsArray[j + 1] - lightnessArray[i]);
 
-        if(invertBool)
-        {
-          if(distToBot > distToTop)
-            indexArray.push(l - j - 2);
-          else
-            indexArray.push(l - j - 1);
-        }
-        else {
-          if(distToBot > distToTop)
-            indexArray.push(j);
-          else
-            indexArray.push(j + 1);
-        }
+        if(distToBot > distToTop)
+          indexArray.push(j);
+        else
+          indexArray.push(j + 1);
           
         break;
       }/**/
     
       /* Floor */
       if(lightnessArray[i] >= Math.floor(colorIntervalsArray[j])) {
-        if(invertBool
-           && i < (offset + numXCells) * numYCells
-           && i >= offset * numYCells)
-        {
-          indexArray.push(l - j - 1);
-        }
-        else
-          indexArray.push(j);
+        indexArray.push(j);
 
         break;
       }/**/
@@ -464,7 +536,7 @@ function cutZeros(indexArray) {
 
 
 // Update the canvas and text outputs
-function updateBoards(indexArray, cutZerosBool) {
+function updateBoards(indexArray) {
   // Update the canvas
   var themeIndexArray = themifyIndexArray(indexArray, themeColorsArray);
   drawGrid(themeIndexArray);
@@ -476,8 +548,22 @@ function updateBoards(indexArray, cutZerosBool) {
   // Format our data into a form that can be converted to gitfiti and github-board format
   reformattedArray = reformatOutput(indexArray);
 
-  gitfiti.innerText = createGitfitiFormat(reformattedArray, nameInput.value);
+  var name = nameInput.value === '' ? 'custom-gitfiti-format' : nameInput.value;
+  gitfiti.innerText = createGitfitiFormat(reformattedArray, name);
   githubBoard.innerText = createGithubBoardFormat(reformattedArray);
+}
+
+
+// Invert the indexes of the given array
+function invert(indexArray, largestIndex) {
+  indexArray = indexArray.slice();
+  for(var i = 0; i < indexArray.length; i++) {
+    if(i < (offset + numXCells) * numYCells
+       && i >= offset * numYCells)
+      indexArray[i] = largestIndex - indexArray[i];
+  }
+
+  return indexArray;
 }
 
 
