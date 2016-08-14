@@ -1,7 +1,7 @@
 # github-calendar-customizer
 A GUI to make customizing one's GitHub contribution calendar easier. 
 
-# [Live editor](https://jsfiddle.net/bsowczc3/2/embedded/result/)
+# [Live editor](http://codepen.io/Zeaklous/full/PzVRBy/)
 
 ![](http://i.imgur.com/t3AW7xF.jpg)
 
@@ -19,7 +19,7 @@ A GUI to make customizing one's GitHub contribution calendar easier.
 
 ### Create the image to be used
 
-- Use [the editor](https://jsfiddle.net/bsowczc3/2/embedded/result/) to create the look you want.
+- Use [the editor](http://codepen.io/Zeaklous/full/PzVRBy/) to create the look you want.
 - Once you're satisfied, copy the outputted array and save it to a text file.
 
 ### Create the fake commits from the generated array
